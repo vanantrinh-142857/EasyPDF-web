@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>IFC Viewer 3D</title>
+<style>
+:root { --bg:#0f172a; --panel:#1e293b; --panel2:#243349; --line:#334155; --txt:#e2e8f0; --mut:#94a3b8; --blue:#3b82f6; --amber:#f59e0b; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--txt);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; overscroll-behavior:none; }
+button { font-family:inherit; }
+
+/* ── Khung nhìn 3D ── */
+#viewer-container { position:fixed; inset:0; touch-action:none; }
+#viewer-container canvas { display:block; }
+
+/* ── Thanh trên ── */
+#topbar { position:fixed; top:0; left:0; right:0; height:52px; display:flex; align-items:center; gap:6px;
+  padding:6px 8px calc(6px) 10px; padding-top:calc(6px + env(safe-area-inset-top)); z-index:30;
+  background:linear-gradient(to bottom, rgba(15,23,42,.92), rgba(15,23,42,.55) 80%, transparent); pointer-events:none; }
+#topbar > * { pointer-events:auto; }
+#file-name { flex:1; min-width:0; font-size:12.5px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tb-btn { width:40px; height:40px; flex:0 0 auto; border:1px solid var(--line); border-radius:11px; background:rgba(30,41,59,.88);
+  color:var(--txt); font-size:17px; display:flex; align-items:center; justify-content:center; }
+.tb-btn:active { background:var(--panel2); }
+.tb-btn.on { border-color:var(--blue); color:#93c5fd; box-shadow:0 0 0 1px var(--blue) inset; }
+#btn-lang { font-size:12px; font-weight:700; letter-spacing:.5px; }
+
+/* ── Cột công cụ phải ── */
+#toolcol { position:fixed; right:8px; top:calc(64px + env(safe-area-inset-top)); display:flex; flex-direction:column; gap:8px; z-index:25; }
+.tool-btn { width:44px; height:44px; border:1px solid var(--line); border-radius:12px; background:rgba(30,41,59,.88);
+  color:var(--txt); font-size:18px; display:flex; align-items:center; justify-content:center; }
+.tool-btn:active { background:var(--panel2); }
+.tool-btn.on { border-color:var(--blue); color:#93c5fd; box-shadow:0 0 0 1px var(--blue) inset; }
+#btn-selmode { font-size:11px; font-weight:800; letter-spacing:.3px; }
+
+/* ── Nút zoom ── */
+#zoom-btns { position:fixed; left:8px; bottom:calc(120px + env(safe-area-inset-bottom)); display:none; flex-direction:column; gap:8px; z-index:25; }
+#zoom-btns.show { display:flex; }
+#zoom-btns .tool-btn { font-size:21px; font-weight:700; }
+#btn-zoom-mode { font-size:16px; }
+#btn-zoom-mode.fast { border-color:var(--amber); color:#fcd34d; }
+
+/* ── Popup hướng nhìn / cài đặt ── */
+.pop { position:fixed; right:60px; top:calc(64px + env(safe-area-inset-top)); z-index:40; background:var(--panel);
+  border:1px solid var(--line); border-radius:14px; padding:10px; display:none; box-shadow:0 10px 32px rgba(0,0,0,.5); }
+.pop.show { display:block; }
+#views-pop { display:none; grid-template-columns:repeat(3,1fr); gap:8px; width:216px; }
+#views-pop.show { display:grid; }
+.view-chip { padding:11px 4px; text-align:center; background:var(--panel2); border:1px solid var(--line);
+  border-radius:10px; font-size:13px; }
+.view-chip:active { border-color:var(--blue); }
+#settings-pop { width:min(280px, 78vw); }
+#settings-pop label { font-size:13px; color:var(--txt); }
+#zoom-slider { width:100%; margin:10px 0 4px; accent-color:var(--blue); }
+#zoom-val { float:right; color:#93c5fd; font-weight:700; font-size:13px; }
+#lbl-zoom-hint { font-size:11px; color:var(--mut); line-height:1.45; }
+
+/* ── Chip lựa chọn (dưới) ── */
+#sel-chip { position:fixed; left:8px; right:8px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:35;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:8px 10px; display:none;
+  box-shadow:0 8px 28px rgba(0,0,0,.5); }
+#sel-chip.show { display:block; }
+#sel-name { display:block; font-size:13px; font-weight:700; color:#93c5fd; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; margin-bottom:7px; }
+.sel-row { display:flex; gap:6px; }
+.sel-row button { flex:1; padding:9px 2px; font-size:12px; background:var(--panel2); color:var(--txt);
+  border:1px solid var(--line); border-radius:9px; white-space:nowrap; }
+.sel-row button:active { border-color:var(--blue); }
+#chip-clear { flex:0 0 42px; font-size:14px; }
+
+/* ── Hộp thoại mở file nặng ── */
+#heavy-backdrop { position:fixed; inset:0; background:rgba(2,6,17,.62); z-index:72; display:none; }
+#heavy-backdrop.show { display:block; }
+#heavy-panel { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:73; display:none;
+  width:min(440px, calc(100vw - 28px)); background:var(--panel); border:1px solid var(--line);
+  border-radius:16px; padding:16px 14px; box-shadow:0 18px 60px rgba(0,0,0,.6); }
+#heavy-panel.show { display:block; }
+#heavy-panel h3 { margin:0 0 8px; font-size:15.5px; }
+#heavy-sub { font-size:12.5px; color:var(--mut); line-height:1.5; margin-bottom:12px; white-space:pre-line; }
+.heavy-opt { display:block; width:100%; text-align:left; margin:7px 0; padding:11px 12px;
+  background:#16213c; border:1px solid var(--line); border-radius:11px; color:var(--txt);
+  font-size:13.5px; line-height:1.35; cursor:pointer; }
+.heavy-opt:active { background:#1d2a4d; }
+.heavy-opt.rec { border-color:var(--amber); }
+
+/* ── Kiểu đo ── */
+#mode-bar { position:fixed; left:8px; right:8px; bottom:calc(60px + env(safe-area-inset-bottom)); z-index:35;
+  display:none; gap:5px; overflow-x:auto; padding:7px; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.5); }
+#mode-bar.show { display:flex; }
+
+/* ── Thanh bắt điểm đo ── */
+#snap-bar { position:fixed; left:8px; right:8px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:35;
+  display:none; gap:5px; overflow-x:auto; padding:8px; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.5); }
+#snap-bar.show { display:flex; }
+.snap-chip { flex:0 0 auto; padding:9px 11px; font-size:12px; background:var(--panel2); color:var(--txt);
+  border:1px solid var(--line); border-radius:9px; white-space:nowrap; }
+.snap-chip.on { border-color:var(--amber); color:#fcd34d; box-shadow:0 0 0 1px var(--amber) inset; }
+#measure-hint { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(112px + env(safe-area-inset-bottom));
+  z-index:34; display:none; font-size:12px; color:#fcd34d; background:rgba(30,41,59,.92); border:1px solid var(--line);
+  padding:7px 13px; border-radius:99px; white-space:nowrap; }
+#measure-hint.show { display:block; }
+.measure-label { position:fixed; transform:translate(-50%,-130%); z-index:33; background:rgba(15,23,42,.9);
+  color:#fcd34d; font-size:12px; font-weight:700; padding:3px 8px; border-radius:7px; border:1px solid var(--amber);
+  pointer-events:none; white-space:nowrap; }
+#coord-bar { position:fixed; left:50%; transform:translateX(-50%); top:calc(58px + env(safe-area-inset-top)); z-index:34;
+  display:none; font-size:11.5px; background:rgba(15,23,42,.92); border:1px solid var(--line); border-radius:10px;
+  padding:6px 11px; max-width:94vw; text-align:center; line-height:1.5; }
+#coord-bar.show { display:block; }
+#coord-bar span { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ── Mặt cắt ── */
+#section-ui { position:fixed; left:12px; right:64px; bottom:calc(66px + env(safe-area-inset-bottom)); z-index:32;
+  display:none; align-items:center; flex-wrap:wrap; gap:8px; background:rgba(30,41,59,.92); border:1px solid var(--line);
+  border-radius:12px; padding:9px 13px; }
+#section-ui.show { display:flex; }
+#snap-bar.show ~ #section-ui.show { bottom:calc(150px + env(safe-area-inset-bottom)); } /* nhường chỗ khi đang bật chế độ đo */
+#section-slider { flex:1; min-width:110px; accent-color:var(--amber); }
+#section-val { font-size:12px; color:#fcd34d; font-weight:700; min-width:38px; text-align:right; }
+
+/* ── Toast + loading ── */
+#toast { position:fixed; left:50%; transform:translateX(-50%) translateY(-8px); top:calc(60px + env(safe-area-inset-top));
+  z-index:60; background:#1e293bf2; border:1px solid var(--line); color:var(--txt); font-size:12.5px; line-height:1.45;
+  padding:9px 15px; border-radius:11px; max-width:88vw; opacity:0; pointer-events:none; transition:.22s; white-space:pre-line; }
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+#loading { position:fixed; inset:0; z-index:70; display:none; align-items:center; justify-content:center;
+  flex-direction:column; gap:16px; background:rgba(15,23,42,.86); padding:24px; text-align:center; }
+#loading.show { display:flex; }
+.spinner { width:44px; height:44px; border:4px solid var(--line); border-top-color:var(--blue); border-radius:50%;
+  animation:spin 0.9s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#loading-text { font-size:13px; color:var(--txt); line-height:1.55; max-width:320px; }
+
+/* ── Màn hình chờ ── */
+#welcome { position:fixed; inset:0; z-index:50; background:radial-gradient(1000px 600px at 50% -10%, #1e3a8a55, transparent), var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:28px; text-align:center; }
+#welcome.hidden { display:none; }
+#welcome h1 { margin:0; font-size:27px; letter-spacing:.5px; }
+#welcome h1 b { color:#60a5fa; }
+.welcome-sub { font-size:12.5px; color:var(--mut); max-width:330px; line-height:1.55; margin-bottom:8px; }
+.welcome-btn { width:min(320px, 82vw); padding:15px; font-size:15px; font-weight:700; border-radius:14px;
+  border:1px solid var(--line); background:var(--panel); color:var(--txt); }
+.welcome-btn.primary { background:linear-gradient(135deg,#2563eb,#1d4ed8); border-color:#1d4ed8; color:#fff; }
+.welcome-btn:active { filter:brightness(1.15); }
+.lite-row { display:flex; align-items:center; justify-content:center; gap:0; font-size:13px; color:var(--txt);
+  margin-top:6px; flex-wrap:wrap; }
+.lite-row input { width:17px; height:17px; accent-color:var(--blue); margin-right:2px; }
+.lite-row span { font-size:11px; color:var(--mut); margin-left:5px; }
+#welcome-status { font-size:11.5px; color:#4ade80; margin-top:10px; }
+#welcome-lang { position:absolute; top:calc(14px + env(safe-area-inset-top)); right:14px; padding:9px 14px;
+  font-size:13px; font-weight:700; background:var(--panel); color:var(--txt); border:1px solid var(--line); border-radius:11px; }
+
+/* ── Panel trượt (thuộc tính / tìm kiếm / danh sách file) ── */
+.sheet { position:fixed; left:0; right:0; bottom:0; z-index:55; background:var(--panel); border-radius:18px 18px 0 0;
+  border:1px solid var(--line); border-bottom:none; max-height:72vh; display:none; flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -12px 40px rgba(0,0,0,.6); }
+.sheet.show { display:flex; }
+.sheet-head { display:flex; align-items:center; gap:8px; padding:13px 15px 9px; border-bottom:1px solid var(--line); }
+.sheet-head b { font-size:14.5px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.x-btn { width:34px; height:34px; flex:0 0 auto; border-radius:9px; border:1px solid var(--line); background:var(--panel2);
+  color:var(--txt); font-size:14px; }
+.backdrop { position:fixed; inset:0; z-index:54; background:rgba(0,0,0,.45); display:none; }
+.backdrop.show { display:block; }
+
+#prop-body { overflow-y:auto; padding:9px 15px 16px; }
+.pset-name { font-size:12px; font-weight:800; color:#93c5fd; text-transform:uppercase; letter-spacing:.4px;
+  margin:13px 0 5px; }
+.prop-row { display:flex; gap:10px; padding:6px 0; border-bottom:1px solid #27354d; font-size:12.5px; }
+.prop-row .k { flex:0 0 42%; color:var(--mut); word-break:break-word; }
+.prop-row .v { flex:1; word-break:break-word; }
+.flp-empty { padding:26px 14px; text-align:center; color:var(--mut); font-size:13px; line-height:1.6; }
+
+#search-panel { padding:0; }
+#search-panel .sheet-body { padding:11px 15px 16px; overflow-y:auto; }
+#search-input { width:100%; min-height:96px; resize:vertical; background:var(--bg); color:var(--txt);
+  border:1px solid var(--line); border-radius:10px; padding:10px; font-size:13px; font-family:inherit; line-height:1.5; }
+.search-opt { display:flex; align-items:center; gap:7px; font-size:13px; margin:10px 0; }
+.search-opt input { width:16px; height:16px; accent-color:var(--blue); }
+.search-btns { display:flex; gap:8px; }
+.search-btns button { flex:1; padding:12px 4px; font-size:13px; font-weight:700; border-radius:10px;
+  border:1px solid var(--line); background:var(--panel2); color:var(--txt); }
+#search-run { background:linear-gradient(135deg,#2563eb,#1d4ed8); border-color:#1d4ed8; color:#fff; }
+#search-result { margin-top:10px; font-size:12px; color:var(--mut); white-space:pre-line; line-height:1.5; }
+
+#flp-hint { padding:7px 15px 0; font-size:11.5px; color:var(--mut); }
+#file-list { overflow-y:auto; padding:7px 9px 14px; }
+.file-item { display:flex; align-items:center; gap:11px; padding:11px 8px; border-radius:11px; }
+.file-item:active { background:var(--panel2); }
+.fi-info { flex:1; min-width:0; }
+.fi-name { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fi-meta { font-size:11px; color:var(--mut); margin-top:2px; }
+
+/* ── GIAO DIỆN SÁNG (mặc định — nút 🌙/☀️ trên thanh công cụ để đổi) ── */
+body.light { --bg:#eef2f7; --panel:#ffffff; --panel2:#e6ebf3; --line:#c5cfdc; --txt:#101828; --mut:#51617a; --amber:#b45309; }
+body.light #topbar { background:linear-gradient(to bottom, rgba(238,242,247,.95), rgba(238,242,247,.6) 80%, transparent); }
+body.light .tb-btn, body.light .tool-btn { background:rgba(255,255,255,.93); }
+body.light .tb-btn.on, body.light .tool-btn.on { color:#1d4ed8; }
+body.light #zoom-val, body.light #sel-name, body.light .pset-name { color:#1d4ed8; }
+body.light .heavy-opt { background:#f2f5fa; }
+body.light .heavy-opt:active { background:#e4eaf3; }
+body.light #heavy-backdrop { background:rgba(15,23,42,.35); }
+body.light #btn-zoom-mode.fast, body.light .snap-chip.on, body.light #section-val { color:#92400e; }
+body.light #measure-hint { background:rgba(255,255,255,.95); color:#92400e; }
+body.light .measure-label { background:rgba(255,255,255,.95); color:#92400e; }
+body.light #coord-bar { background:rgba(255,255,255,.95); }
+body.light #section-ui { background:rgba(255,255,255,.94); }
+body.light #toast { background:#fffffff5; }
+body.light #loading { background:rgba(238,242,247,.9); }
+body.light #welcome { background:radial-gradient(1000px 600px at 50% -10%, #bfdbfe99, transparent), var(--bg); }
+body.light #welcome h1 b { color:#1d4ed8; }
+body.light #welcome-status { color:#15803d; }
+body.light .prop-row { border-bottom-color:#dde4ee; }
+body.light .pop, body.light #sel-chip, body.light #mode-bar, body.light #snap-bar, body.light .sheet { box-shadow:0 10px 32px rgba(15,23,42,.18); }
+/* ── EasyPDF v2.89: chạy nhúng trong EasyPDF (?embed=1) ── */
+body.embed #welcome-scan, body.embed #scan-btn-container { display:none !important; }
+#ddc-back { display:none; }
+body.embed #ddc-back { display:flex; position:fixed; left:8px; top:calc(6px + env(safe-area-inset-top)); z-index:60; width:40px; height:40px;
+  align-items:center; justify-content:center; border:1px solid #e63329; border-radius:11px; background:#e63329; color:#fff;
+  font-size:24px; font-weight:700; line-height:1; padding:0 0 3px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+body.embed #ddc-back:active { filter:brightness(.9); }
+body.embed #topbar { padding-left:56px; }
+</style>
+</head>
+<body>
+
+<div id="viewer-container"></div>
+
+<!-- Thanh trên -->
+<button id="ddc-back" type="button" aria-label="Về Easy PDF" title="Về Easy PDF">‹</button>
+<div id="topbar">
+  <span id="file-name"></span>
+  <button class="tb-btn" id="file-btn-container">📄</button>
+  <button class="tb-btn" id="scan-btn-container">📂</button>
+  <button class="tb-btn" id="btn-theme">🌙</button>
+  <button class="tb-btn" id="btn-lang">EN</button>
+  <button class="tb-btn on" id="btn-grid">▦</button>
+  <button class="tb-btn" id="btn-settings">⚙️</button>
+</div>
+
+<!-- Cột công cụ phải -->
+<div id="toolcol">
+  <button class="tool-btn" id="btn-fit">🎯</button>
+  <button class="tool-btn" id="btn-views">🧭</button>
+  <button class="tool-btn" id="btn-measure">📏</button>
+  <button class="tool-btn" id="btn-section">✂️</button>
+  <button class="tool-btn" id="btn-selmode">ĐƠN</button>
+  <button class="tool-btn" id="btn-search">🔎</button>
+  <button class="tool-btn" id="btn-showall">👁️</button>
+</div>
+
+<!-- Nút zoom -->
+<div id="zoom-btns">
+  <button class="tool-btn" id="btn-zoom-in">＋</button>
+  <button class="tool-btn" id="btn-zoom-mode">🎯</button>
+  <button class="tool-btn" id="btn-zoom-out">−</button>
+</div>
+
+<!-- Popup hướng nhìn -->
+<div class="pop" id="views-pop">
+  <div class="view-chip" data-view="iso">3D</div>
+  <div class="view-chip" data-view="top" data-i18n="vTop">Trên</div>
+  <div class="view-chip" data-view="front" data-i18n="vFront">Trước</div>
+  <div class="view-chip" data-view="back" data-i18n="vBack">Sau</div>
+  <div class="view-chip" data-view="left" data-i18n="vLeft">Trái</div>
+  <div class="view-chip" data-view="right" data-i18n="vRight">Phải</div>
+</div>
+
+<!-- Popup cài đặt -->
+<div class="pop" id="settings-pop">
+  <label id="lbl-zoom">Tốc độ zoom</label><span id="zoom-val">100%</span>
+  <button id="btn-export-lite" class="snap-chip" style="width:100%;margin:8px 0 2px;">💾 Xuất bản nhẹ cho điện thoại (.ifclite)</button>
+<input type="range" id="zoom-slider" min="20" max="300" step="10" value="100">
+  <div id="lbl-zoom-hint">Kéo phải: zoom nhạy/nhanh hơn · kéo trái: chậm/chính xác hơn</div>
+  <div style="height:1px; background:var(--line); margin:12px 0 10px;"></div>
+  <label id="lbl-res">Độ nét hiển thị</label><span id="res-val" style="float:right; color:#93c5fd; font-weight:700; font-size:13px;">100%</span>
+  <input type="range" id="res-slider" min="50" max="100" step="5" value="100" style="width:100%; margin:10px 0 4px; accent-color:var(--blue);">
+  <div id="lbl-res-hint" style="font-size:11px; color:var(--mut); line-height:1.45;">Mô hình lớn bị giật/lag → hạ xuống, GPU nhẹ hơn nhiều</div>
+</div>
+
+<!-- Chip lựa chọn -->
+<div id="sel-chip">
+  <span id="sel-name"></span>
+  <div class="sel-row">
+    <button id="chip-props">ℹ️ Thuộc tính</button>
+    <button id="chip-zoomsel">🔍 Zoom</button>
+    <button id="chip-hide">Ẩn</button>
+    <button id="chip-isolate">Cô lập</button>
+    <button id="chip-clear">✕</button>
+  </div>
+</div>
+
+<!-- Hộp thoại mở file nặng theo mức -->
+<div id="heavy-backdrop"></div>
+<div id="heavy-panel">
+  <h3 id="heavy-title">⚙️ File lớn — chọn cách mở</h3>
+  <div id="heavy-sub"></div>
+  <button class="heavy-opt" id="heavy-0">🔓 Mở ĐẦY ĐỦ</button>
+  <button class="heavy-opt rec" id="heavy-1">① Ẩn bu lông &amp; mối hàn (khuyên dùng)</button>
+  <label class="lite-row" style="margin-top:9px;font-size:12.5px;"><input type="checkbox" id="heavy-noprops"><i></i> <span id="lbl-heavy-noprops">Bỏ kho thuộc tính (nhẹ RAM nhất)</span></label>
+</div>
+
+<!-- Kiểu đo: 2 điểm / điểm–cạnh / điểm–mặt -->
+<div id="mode-bar">
+  <button class="snap-chip on" id="mode-pp" data-mmode="pp">📏 2 điểm</button>
+  <button class="snap-chip" id="mode-pl" data-mmode="pl">⟂ Điểm–Cạnh</button>
+  <button class="snap-chip" id="mode-pf" data-mmode="pf">⟂ Điểm–Mặt</button>
+  <button class="snap-chip" id="mode-bc" data-mmode="bc">🔩 Tâm BL</button>
+</div>
+
+<!-- Thanh bắt điểm đo -->
+<div id="snap-bar">
+  <button class="snap-chip on" id="snap-vertex" data-snap="vertex">📍 Đỉnh</button>
+  <button class="snap-chip" id="snap-edge" data-snap="edge">╱ Cạnh</button>
+  <button class="snap-chip" id="snap-mid" data-snap="mid">◐ Trung điểm</button>
+  <button class="snap-chip" id="snap-center" data-snap="center">⊙ Tâm</button>
+  <button class="snap-chip" id="snap-free" data-snap="free">✋ Tự do</button>
+  <button class="snap-chip" id="snap-undo">↩️</button>
+  <button class="snap-chip" id="snap-clear">🗑️</button>
+</div>
+<div id="measure-hint">Chọn kiểu bắt điểm rồi chạm 2 điểm để đo</div>
+<div id="coord-bar"></div>
+
+<!-- Mặt cắt -->
+<div id="section-ui">
+  <button class="snap-chip" id="sec-pick">⬚ Chọn mặt cắt</button>
+  <button class="snap-chip" id="sec-flip" title="Đảo phía giữ lại">⇅</button>
+  <button class="snap-chip" id="sec-horiz" title="Trở về cắt ngang">↕</button>
+  <input type="range" id="section-slider" min="0" max="1000" value="500">
+  <span id="section-val">50%</span>
+</div>
+
+<div id="toast"></div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div id="loading-text">Đang xử lý mô hình...</div>
+</div>
+
+<!-- Màn hình chờ -->
+<div id="welcome">
+  <button id="welcome-lang">🌐 EN</button>
+  <h1>IFC <b>Viewer 3D</b></h1>
+  <div class="welcome-sub">Engine mới: cấu kiện lặp dùng chung hình học (InstancedMesh) — file lớn nhẹ RAM hơn nhiều lần</div>
+  <button class="welcome-btn primary" id="welcome-open" disabled>📄 Mở tệp IFC</button>
+  <button class="welcome-btn" id="welcome-scan" disabled>📂 Quét file IFC trên máy</button>
+  <label class="lite-row"><input type="checkbox" id="lite-mode-cb"><i></i> 🔩 Chế độ nhẹ: ẩn mối hàn <span>(bản máy tính luôn hiện đủ bu lông)</span></label>
+  <div id="welcome-status">⏳ Đang khởi động engine...</div>
+</div>
+
+<!-- Panel thuộc tính -->
+<div class="sheet" id="prop-panel">
+  <div class="sheet-head"><b id="prop-title">Thuộc tính</b><button class="x-btn" id="prop-close">✕</button></div>
+  <div id="prop-body"></div>
+</div>
+
+<!-- Panel tìm kiếm -->
+<div class="backdrop" id="search-backdrop"></div>
+<div class="sheet" id="search-panel">
+  <div class="sheet-head"><b id="search-title">🔍 Tìm cấu kiện</b><button class="x-btn" id="search-close">✕</button></div>
+  <div class="sheet-body">
+    <textarea id="search-input" placeholder="Mỗi dòng một tên/mã cấu kiện…&#10;VD:&#10;DC-01&#10;PL-12x200"></textarea>
+    <label class="search-opt"><input type="checkbox" id="search-exact"><span id="lbl-search-exact">Khớp chính xác tên</span></label>
+    <div class="search-btns">
+      <button id="search-run">🔍 Tìm &amp; làm nổi bật</button>
+      <button id="search-clearbtn">Hiện lại bình thường</button>
+    </div>
+    <div id="search-result"></div>
+  </div>
+</div>
+
+<!-- Panel danh sách file quét -->
+<div class="backdrop" id="flp-backdrop"></div>
+<div class="sheet" id="file-list-panel">
+  <div class="sheet-head"><b>📂 File IFC <span id="flp-count"></span></b><button class="x-btn" id="flp-rescan">🔄</button><button class="x-btn" id="flp-close">✕</button></div>
+  <div id="flp-hint"></div>
+  <div id="file-list"></div>
+</div>
+
+<!-- Input ẩn: KHÔNG đặt accept — Android không nhận MIME .ifc sẽ làm mờ hết file; lọc bằng JS -->
+<input type="file" id="file-input" style="display:none">
+<input type="file" id="dir-input" webkitdirectory directory style="display:none">
+<input type="file" id="multi-input" multiple style="display:none">
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
