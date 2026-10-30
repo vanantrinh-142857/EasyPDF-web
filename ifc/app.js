@@ -43,7 +43,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { THREE, OBC, OBF, WEBIFC } from './libs/obc/obc.js';
 
-const IS_PC = !window.AndroidIFC; // bản web máy tính (không có cầu nối WebView)
+// v2.90: chạy NHÚNG trong EasyPDF trên điện thoại Android thì dùng chế độ ĐIỆN THOẠI (trần RAM wasm 1,375 GB,
+// hỏi cách mở file nặng, cờ chống crash, hạ độ nét khi xoay...) dù EasyPDF không có cầu nối AndroidIFC.
+const EMBED_PHONE = (() => { try { return new URLSearchParams(location.search).get('embed') === '1' && window.parent !== window && /Android/i.test(navigator.userAgent); } catch (e) { return false; } })();
+const IS_PC = !window.AndroidIFC && !EMBED_PHONE; // bản web máy tính (không có cầu nối WebView)
 const MT_ON = !!self.crossOriginIsolated; // server gửi COOP/COEP → SharedArrayBuffer → đa luồng
 
 // Soi lỗi worker ra màn hình (worker chết im lặng là thủ phạm treo khó tìm nhất)
@@ -490,7 +493,7 @@ let propPack = null;
 // → kho 150–250MB chuỗi co còn ~10–25MB. Tra cứu thì giải nén đúng 1 phân đoạn (8MB,
 // ~vài chục ms) và cache 2 phân đoạn gần nhất. PC giữ chuỗi thường (RAM dư dả, còn
 // phục vụ xuất .ifclite vốn join thẳng segs).
-const PP_GZ = !!window.AndroidIFC && typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+const PP_GZ = (!!window.AndroidIFC || EMBED_PHONE) && typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
 const PP_SEG = PP_GZ ? 8 * 1048576 : 24 * 1048576;
 class SegWriter {
     constructor() { this.segs = []; this.buf = []; this.len = 0; this.jobs = []; }
@@ -866,8 +869,48 @@ class IfcLineStripper {
 // ═══ NẠP TỪ Ổ ĐĨA — KHÔNG BẢN SAO JS (APK v2.7+) ═════════════════════════════
 const DISK_OK = !!(window.AndroidIFC && typeof AndroidIFC.readFileChunkB64 === 'function');
 
+// v2.90: nguồn đọc theo khúc bằng XHR ĐỒNG BỘ có header Range — engine web-ifc gọi callback đồng bộ nên
+// không dùng được File.slice() (bất đồng bộ). Dùng cho /incoming.bin của EasyPDF (Android trả 206)
+// và blob: URL của tệp chọn từ máy. Trả null nếu nguồn không hỗ trợ Range → gọi nơi khác nạp cả tệp như cũ.
+function makeRangeReader(url, size) {
+    const CH = 4 * 1048576;
+    let scratch = null;
+    const get = (off, len) => {
+        const x = new XMLHttpRequest();
+        x.open('GET', url, false);
+        x.overrideMimeType('text/plain; charset=x-user-defined');
+        x.setRequestHeader('Range', 'bytes=' + off + '-' + (off + len - 1));
+        x.send(null);
+        if (x.status !== 206) throw new Error('Range không được hỗ trợ (HTTP ' + x.status + ')');
+        return x;
+    };
+    let total = Number(size) || 0;
+    try {
+        const x = get(0, 64);
+        const m = /\/(\d+)\s*$/.exec(x.getResponseHeader('Content-Range') || '');
+        if (m) total = Number(m[1]) || total;
+        if (!total) return null;
+    } catch (e) { console.warn('IFC: thăm dò đọc theo khúc thất bại:', e); return null; }
+    return {
+        size: total,
+        maxChunk: () => CH,
+        fileSize: () => total,
+        readChunkBin(off, len) {
+            off = Number(off) || 0;
+            if (off >= total) return new Uint8Array(0);
+            len = Math.min(Number(len) || CH, total - off);
+            const s = get(off, len).responseText, n = s.length;
+            if (!scratch || scratch.length < n) scratch = new Uint8Array(Math.max(n, CH));
+            for (let i = 0; i < n; i++) scratch[i] = s.charCodeAt(i) & 255;
+            return scratch.subarray(0, n);
+        },
+        closeStream() {},
+        async readAll() { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }
+    };
+}
+
 async function openIfcFromDisk(f, fname, noProps, stripNames) {
-    const A = window.AndroidIFC;
+    const A = f.__reader || window.AndroidIFC; // v2.90: nguồn đọc theo khúc của EasyPDF, hoặc cầu nối APK
     let CH = 4 * 1048576;
     try { if (A.maxChunk) CH = Math.min(CH, A.maxChunk() || CH); } catch (e) {}
     let total = f.size;
@@ -885,6 +928,13 @@ async function openIfcFromDisk(f, fname, noProps, stripNames) {
     const readChunk = () => { // đọc khúc file KẾ TIẾP qua cầu nối → view trên scratch
         if (total && readTo >= total) return EMPTY;
         const want = total ? Math.min(CH, total - readTo) : CH;
+        if (A.readChunkBin) { // v2.90: nhị phân trực tiếp, không qua base64
+            let u8;
+            try { u8 = A.readChunkBin(readTo, want); } catch (e) { failAt = readTo; failMsg = String((e && e.message) || e); return EMPTY; }
+            if (!u8 || !u8.length) { if (total && readTo < total) { failAt = readTo; failMsg = 'đọc rỗng'; } return EMPTY; }
+            readTo += u8.length;
+            return u8;
+        }
         let b64;
         try { b64 = A.readFileChunkB64(f.uri, String(readTo), want); }
         catch (e) { failAt = readTo; failMsg = String(e); return EMPTY; }
@@ -962,7 +1012,11 @@ async function openIfcFromDisk(f, fname, noProps, stripNames) {
     }
 }
 
-function diskHead(uri, n) {
+function diskHead(uri, n, rd) {
+    if (rd && rd.readChunkBin) { // v2.90
+        try { const u = rd.readChunkBin(0, n); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return s; }
+        catch (e) { return ''; }
+    }
     try {
         const b64 = AndroidIFC.readFileChunkB64(uri, '0', n);
         if (!b64) return '';
@@ -1060,10 +1114,10 @@ async function loadIfcFile(file, displayName) {
 
         // ── GÓI NHẸ .ifclite? (6 byte đầu = 'IFCL1\n') — nạp thẳng, khỏi parse IFC ──
         const head6 = isDisk
-            ? diskHead(diskSrc.uri, 6)
+            ? diskHead(diskSrc.uri, 6, diskSrc.__reader)
             : new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(6, buffer.byteLength)));
         if (isDisk && head6 === IFCLITE_MAGIC) {
-            buffer = await fetchLocalFile(diskSrc);
+            buffer = diskSrc.__reader ? await diskSrc.__reader.readAll() : await fetchLocalFile(diskSrc);
         }
         let model;
         let liteBundle = false;
@@ -2794,8 +2848,22 @@ if (EMBED) {
     window.addEventListener('message', async (ev) => {
         if (ev.origin !== location.origin || ev.source !== window.parent) return;
         const d = ev.data || {};
-        if (d.type !== 'easypdf-ifc-open' || !d.file) return;
-        try { await loadIfcFile(d.file, d.name || d.file.name); }
+        if (d.type !== 'easypdf-ifc-open' || !(d.file || (d.src && d.src.url))) return;
+        try {
+            if (d.src && d.src.url) { // v2.90: đọc theo khúc, không chép cả file vào RAM JS
+                const name = d.name || (d.file && d.file.name) || 'model.ifc';
+                const rd = makeRangeReader(d.src.url, d.src.size);
+                if (rd) { await loadIfcFile({ __disk: true, uri: d.src.url, size: rd.size, name, __reader: rd }, name); return; }
+                console.warn('IFC: nguồn không đọc được theo khúc — nạp cả tệp như cũ');
+                if (!d.file) {
+                    const r = await fetch(d.src.url, { cache: 'no-store' });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    await loadIfcFile(await r.arrayBuffer(), name);
+                    return;
+                }
+            }
+            await loadIfcFile(d.file, d.name || d.file.name);
+        }
         catch (e) { console.error('EasyPDF → IFC:', e); }
     });
     toParent({ type: 'easypdf-ifc-ready' });
