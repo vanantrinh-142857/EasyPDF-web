@@ -7,7 +7,7 @@
 <meta content="#e63329" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
-<title>Easy PDF 2.96</title>
+<title>Easy PDF 2.97</title>
 <style>
   :root{
     --page-bg:#d5e2ef;
@@ -1208,6 +1208,17 @@
     #qrPanel section[data-pane=make] .qrPrev canvas{max-height:300px}
   }
   @media (max-width:899px){#qrPanel section[data-pane=make] .qrL{display:contents}}   /* điện thoại: để khung xem trước dính suốt phần cuộn */
+  /* v2.97: quét QR bằng camera */
+  #qrCamLayer{position:fixed;inset:0;z-index:calc(var(--z-dialog,500) + 40);background:#000;display:none;align-items:center;justify-content:center}
+  #qrCamLayer.open{display:flex}
+  #qrCamLayer [hidden]{display:none!important}
+  #qrCamLayer .cmVid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  #qrCamLayer .cmFrame{position:relative;width:min(70vw,60vh,360px);aspect-ratio:1/1;border:3px solid rgba(255,255,255,.95);border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.42);pointer-events:none}
+  #qrCamLayer .cmTop{position:absolute;top:0;left:0;right:0;display:flex;gap:8px;padding:max(12px,env(safe-area-inset-top,0px)) 14px 0}
+  #qrCamLayer .cmBtn{border:none;background:rgba(0,0,0,.6);color:#fff;font-size:14px;font-weight:700;border-radius:20px;padding:9px 16px;cursor:pointer;min-height:0;height:auto}
+  #qrCamLayer .cmClose{margin-left:auto}
+  #qrCamLayer .cmMsg{position:absolute;left:12px;right:12px;bottom:max(18px,env(safe-area-inset-bottom,0px));color:#fff;background:rgba(0,0,0,.62);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.4;text-align:center}
+  #qrCamLayer .cmMsg.err{background:rgba(185,28,28,.88)}
   /* ================= v2.94: Excel dễ đọc trên điện thoại ================= */
   /* Kiểu "bảng gọn": chữ tự xuống dòng, mỗi cột có chiều rộng tối đa theo màn hình → ô nhiều chữ không kéo bảng dài vô tận */
   #ovDoc.ox:not(.oxfid) td,#ovDoc.ox:not(.oxfid) th{white-space:pre-wrap;overflow-wrap:break-word;vertical-align:top;min-width:64px;max-width:min(78vw,460px)}
@@ -4437,7 +4448,7 @@ if(!window.__easyRuntimeErrorCollectorReady){
   function syncDirtyUI(){
     try{
       const nm=baseName?baseName+'.pdf':'Easy PDF';
-      document.title=(sessionDirty?'● ':'')+'Easy PDF 2.96 — '+nm;
+      document.title=(sessionDirty?'● ':'')+'Easy PDF 2.97 — '+nm;
       const b=$('btnSaveEdited');if(b)b.title=sessionDirty?T('Có thay đổi chưa lưu'):T('Đã lưu');
     }catch(_){}
   }
@@ -15154,7 +15165,7 @@ async function photoOpenFile(file,opt={}){
     const i18n=window.easyI18nAudit?window.easyI18nAudit():null;
     const entry=['easyOpenIncoming','easyHandleBack','easyBackInterceptNeeded','easyNotifyBackState','photoOpenEditor'];
     return {
-      version:'2.96',
+      version:'2.97',
       duplicateIds:dup,
       storageGuard:!!window.EasyPDFSafeStorage,
       entryPoints:Object.fromEntries(entry.map(k=>[k,typeof window[k]==='function'])),
@@ -15453,7 +15464,16 @@ async function photoOpenFile(file,opt={}){
       ['Độ tương phản thấp giữa màu mã và màu nền — dễ không quét được.','Low contrast between code and background — it may not scan.','Kontras rendah antara kode dan latar — mungkin tidak terbaca.','코드와 배경의 대비가 낮아 스캔되지 않을 수 있습니다.','コードと背景のコントラストが低く、読み取れない可能性があります。','Mababa ang contrast ng code at background — maaaring hindi ma-scan.','码与背景对比度过低——可能无法扫描。'],
       ['Mã sáng trên nền tối: một số máy quét không đọc được. Nên dùng mã tối trên nền sáng.','Light code on dark: some scanners cannot read it. Prefer dark code on a light background.','Kode terang di latar gelap: sebagian pemindai tidak dapat membacanya. Gunakan kode gelap di latar terang.','어두운 배경의 밝은 코드는 일부 스캐너가 읽지 못합니다. 밝은 배경의 어두운 코드를 권장합니다.','暗い背景に明るいコード: 読み取れない端末があります。明るい背景に暗いコードを推奨。','Maliwanag na code sa madilim: may mga scanner na hindi makabasa. Mas mainam ang madilim na code sa maliwanag.','深色背景上的浅色码：部分扫描器无法识别。建议浅底深码。'],
       ['Đã tự dùng mức sửa lỗi H để chừa chỗ cho logo.','Error correction H is used automatically to leave room for the logo.','Koreksi kesalahan H digunakan otomatis untuk memberi ruang bagi logo.','로고 공간을 위해 오류 정정 H를 자동으로 사용합니다.','ロゴの場所を確保するため誤り訂正Hを自動で使用しています。','Awtomatikong gamit ang error correction H para magkasya ang logo.','已自动使用 H 级纠错，为徽标留出空间。'],
-      ['Hãy mở một PDF hoặc chọn ảnh.','Open a PDF or choose an image.','Buka PDF atau pilih gambar.','PDF를 열거나 이미지를 선택하세요.','PDFを開くか画像を選択してください。','Magbukas ng PDF o pumili ng larawan.','请先打开 PDF 或选择图片。']
+      ['Hãy mở một PDF hoặc chọn ảnh.','Open a PDF or choose an image.','Buka PDF atau pilih gambar.','PDF를 열거나 이미지를 선택하세요.','PDFを開くか画像を選択してください。','Magbukas ng PDF o pumili ng larawan.','请先打开 PDF 或选择图片。'],
+      ['Quét bằng camera','Scan with camera','Pindai dengan kamera','카메라로 스캔','カメラでスキャン','I-scan gamit ang camera','用相机扫描'],
+      ['Đưa mã QR vào khung. Camera chỉ dùng để đọc mã ngay trên máy, không lưu ảnh và không gửi đi.','Point the camera at a QR code. The camera is used only to read codes on this device; no images are saved or sent.','Arahkan kamera ke kode QR. Kamera hanya dipakai membaca kode di perangkat ini; gambar tidak disimpan atau dikirim.','QR 코드를 프레임에 맞추세요. 카메라는 이 기기에서 코드를 읽는 데만 사용되며 이미지는 저장하거나 전송되지 않습니다.','QRコードを枠に合わせてください。カメラはこの端末でコードを読み取るためだけに使われ、画像は保存・送信されません。','Ituon ang camera sa QR code. Ginagamit lang ang camera para basahin ang code sa device na ito; walang larawang sine-save o ipinapadala.','请将二维码对准取景框。相机仅用于在本机读取二维码，不会保存或上传图像。'],
+      ['Đang bật camera…','Starting camera…','Menyalakan kamera…','카메라 시작 중…','カメラを起動中…','Binubuksan ang camera…','正在启动相机…'],
+      ['Chưa được cấp quyền camera. Hãy cho phép camera cho Easy PDF rồi thử lại.','Camera permission was not granted. Allow camera access for Easy PDF and try again.','Izin kamera belum diberikan. Izinkan akses kamera untuk Easy PDF lalu coba lagi.','카메라 권한이 허용되지 않았습니다. Easy PDF에 카메라를 허용한 후 다시 시도하세요.','カメラの権限が許可されていません。Easy PDFにカメラを許可してからもう一度お試しください。','Hindi pinayagan ang camera. Payagan ang Easy PDF na gumamit ng camera at subukan muli.','未授予相机权限。请允许 Easy PDF 使用相机后重试。'],
+      ['Không tìm thấy camera trên thiết bị này.','No camera was found on this device.','Kamera tidak ditemukan di perangkat ini.','이 기기에서 카메라를 찾을 수 없습니다.','この端末にカメラが見つかりません。','Walang nakitang camera sa device na ito.','此设备上未找到相机。'],
+      ['Không bật được camera (có thể đang được ứng dụng khác dùng).','Could not start the camera (it may be in use by another app).','Tidak dapat menyalakan kamera (mungkin sedang dipakai aplikasi lain).','카메라를 시작할 수 없습니다(다른 앱에서 사용 중일 수 있음).','カメラを起動できません（他のアプリが使用中の可能性があります）。','Hindi mabuksan ang camera (maaaring ginagamit ng ibang app).','无法启动相机（可能正被其他应用占用）。'],
+      ['Thiết bị hoặc trình duyệt này không hỗ trợ quét bằng camera.','This device or browser does not support camera scanning.','Perangkat atau peramban ini tidak mendukung pemindaian dengan kamera.','이 기기 또는 브라우저는 카메라 스캔을 지원하지 않습니다.','この端末またはブラウザはカメラでのスキャンに対応していません。','Hindi sinusuportahan ng device o browser na ito ang pag-scan gamit ang camera.','此设备或浏览器不支持相机扫描。'],
+      ['Đèn','Light','Lampu','조명','ライト','Ilaw','手电筒'],
+      ['Camera','Camera','Kamera','카메라','カメラ','Camera','相机']
     ];
     (function(){
       const o={};QI.forEach(r=>{o[r[0]]={en:r[1],id:r[2],ko:r[3],ja:r[4],fil:r[5],'zh-CN':r[6]};});
@@ -15617,6 +15637,7 @@ async function photoOpenFile(file,opt={}){
   '</section>'+
   /* --- Đọc --- */
   '<section data-pane="read" hidden>'+
+   '<div class="qrActs"><button type="button" class="qrBtn primary" id="qrCam" data-vi="Quét bằng camera"></button></div>'+
    '<div class="qrRow"><label><span data-vi="Trang"></span><input type="number" id="qrPage" min="1" step="1"></label>'+
      '<button type="button" class="qrBtn primary" id="qrReadPage" data-vi="Đọc trang này"></button>'+
      '<button type="button" class="qrBtn" id="qrReadAll" data-vi="Đọc cả tài liệu"></button></div>'+
@@ -15696,7 +15717,7 @@ async function photoOpenFile(file,opt={}){
     function close(){
       const p=$q('qrPanel');if(p)p.classList.remove('open');
       try{document.body.classList.remove('qrOpen');}catch(_){}
-      cancelFlag=true;
+      cancelFlag=true;camStop();
     }
 
     function wire(){
@@ -15718,6 +15739,7 @@ async function photoOpenFile(file,opt={}){
       $q('qrLogoClr').onclick=()=>{logoImg=null;cfg.st.logoText='';saveCfg();applyStyleToUi();schedulePreview();};
       /* đọc */
       $q('qrReadPage').onclick=()=>readPdf(false);$q('qrReadAll').onclick=()=>readPdf(true);
+      $q('qrCam').onclick=camStart;
       $q('qrReadImg').onclick=()=>$q('qrImgInput').click();
       $q('qrImgInput').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await readImage(f);};
       $q('qrStop').onclick=()=>{cancelFlag=true;};
@@ -16008,7 +16030,7 @@ async function photoOpenFile(file,opt={}){
       if(!$q('qrResults').children.length&&!$q('qrReadStatus').textContent)setStatus(pdf?'':t('Hãy mở một PDF hoặc chọn ảnh.'));
     }
     function setStatus(msg,err){const s=$q('qrReadStatus');s.textContent=msg||'';s.classList.toggle('err',!!err);}
-    function setBusy(on){busy=on;cancelFlag=false;$q('qrStop').hidden=!on;['qrReadPage','qrReadAll','qrReadImg'].forEach(id=>{const e=$q(id);if(e)e.disabled=on||(id!=='qrReadImg'&&!hasPdf());});}
+    function setBusy(on){busy=on;cancelFlag=false;$q('qrStop').hidden=!on;['qrReadPage','qrReadAll','qrReadImg','qrCam'].forEach(id=>{const e=$q(id);if(e)e.disabled=on||(id!=='qrReadImg'&&id!=='qrCam'&&!hasPdf());});}
 
     function maskRect(id,loc){
       const xs=[loc.topLeftCorner.x,loc.topRightCorner.x,loc.bottomLeftCorner.x,loc.bottomRightCorner.x],ys=[loc.topLeftCorner.y,loc.topRightCorner.y,loc.bottomLeftCorner.y,loc.bottomRightCorner.y];
@@ -16169,6 +16191,99 @@ async function photoOpenFile(file,opt={}){
       mk(t('+ Nhãn'),()=>{const L=$q('qrList');L.value=(L.value&&!/\n$/.test(L.value)?L.value+'\n':L.value)+String(text).split('\n')[0];showNotice(t('Đã thêm vào danh sách in nhãn.'),2200);});
       box.appendChild(s);box.appendChild(pre);box.appendChild(acts);$q('qrResults').appendChild(box);
     }
+
+    /* ---------- Quét bằng camera (v2.97) ----------
+       - Chỉ chạy khi người dùng bấm nút; hỏi quyền camera lúc đó (Android: hộp hỏi quyền của hệ thống).
+       - Đọc ngay trên máy bằng jsQR; KHÔNG lưu ảnh, KHÔNG gửi đi đâu. Thấy mã đầu tiên thì dừng camera, hiện kết quả.
+       - Không tự mở liên kết (bấm "Mở liên kết" còn hỏi xác nhận như các cách đọc khác).
+       - Camera luôn được tắt khi: đóng bảng QR, bấm Back, app xuống nền, lỗi. */
+    let camStream=null,camRaf=0,camLayer=null,camVideo=null,camStarting=false,camTick=0,camCv=null,camLast=0,camTorchOn=false;
+    const camIsOpen=()=>!!camLayer&&camLayer.classList.contains('open');
+    function camMsg(m,err){if(!camLayer)return;const e=camLayer.querySelector('.cmMsg');e.textContent=m||'';e.classList.toggle('err',!!err);}
+    function camBuild(){
+      if(camLayer)return;
+      camLayer=document.createElement('div');camLayer.id='qrCamLayer';camLayer.setAttribute('role','dialog');
+      camLayer.innerHTML='<video class="cmVid" playsinline muted autoplay></video><div class="cmFrame"></div>'+
+        '<div class="cmTop"><button type="button" class="cmBtn" id="qrCamTorch" hidden></button><button type="button" class="cmBtn cmClose" id="qrCamClose"></button></div>'+
+        '<div class="cmMsg" role="status"></div>';
+      document.body.appendChild(camLayer);
+      camVideo=camLayer.querySelector('video');camVideo.muted=true;
+      $q('qrCamClose').onclick=()=>camStop();
+      $q('qrCamTorch').onclick=()=>camTorch();
+    }
+    function camStop(){
+      if(camRaf){try{cancelAnimationFrame(camRaf);}catch(_){}camRaf=0;}
+      const st=camStream;camStream=null;
+      if(st){try{st.getTracks().forEach(x=>x.stop());}catch(_){}}
+      if(camVideo){try{camVideo.pause();}catch(_){}try{camVideo.srcObject=null;}catch(_){}}
+      if(camLayer)camLayer.classList.remove('open');
+      camTorchOn=false;
+    }
+    async function camTorch(){
+      try{
+        const tr=camStream&&camStream.getVideoTracks()[0];if(!tr)return;
+        camTorchOn=!camTorchOn;await tr.applyConstraints({advanced:[{torch:camTorchOn}]});
+      }catch(e){camTorchOn=false;}
+    }
+    async function camStart(){
+      if(busy||camIsOpen()||camStarting)return;
+      if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){setStatus(t('Thiết bị hoặc trình duyệt này không hỗ trợ quét bằng camera.'),true);return;}
+      camStarting=true;
+      try{
+        await libScan();
+        camBuild();clearResults();setStatus('');
+        $q('qrCamClose').textContent=t('Đóng');$q('qrCamTorch').textContent='🔦 '+t('Đèn');$q('qrCamTorch').hidden=true;
+        camLayer.classList.add('open');camMsg(t('Đang bật camera…'));
+        let st;
+        try{st=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});}
+        catch(e){
+          if(e&&(e.name==='OverconstrainedError'||e.name==='ConstraintNotSatisfiedError'))st=await navigator.mediaDevices.getUserMedia({audio:false,video:true});
+          else throw e;
+        }
+        if(!camIsOpen()){try{st.getTracks().forEach(x=>x.stop());}catch(_){}return;}   // người dùng đã đóng trong lúc chờ cấp quyền
+        camStream=st;camVideo.srcObject=st;
+        try{await camVideo.play();}catch(_){}
+        try{const tr=st.getVideoTracks()[0],cap=tr&&tr.getCapabilities?tr.getCapabilities():null;if(cap&&cap.torch)$q('qrCamTorch').hidden=false;}catch(_){}
+        camMsg(t('Đưa mã QR vào khung. Camera chỉ dùng để đọc mã ngay trên máy, không lưu ảnh và không gửi đi.'));
+        camTick=0;camLast=0;camLoop();
+      }catch(e){
+        const n=e&&e.name;camStop();
+        setStatus(n==='NotAllowedError'||n==='SecurityError'?t('Chưa được cấp quyền camera. Hãy cho phép camera cho Easy PDF rồi thử lại.')
+          :(n==='NotFoundError'||n==='DevicesNotFoundError')?t('Không tìm thấy camera trên thiết bị này.')
+          :t('Không bật được camera (có thể đang được ứng dụng khác dùng).'),true);
+      }finally{camStarting=false;}
+    }
+    function camLoop(){
+      if(!camStream)return;
+      camRaf=requestAnimationFrame(()=>{
+        if(!camStream)return;
+        const v=camVideo,now=performance.now();
+        if(v.readyState>=2&&v.videoWidth>0&&now-camLast>110){
+          camLast=now;
+          try{
+            const k=Math.min(1,800/Math.max(v.videoWidth,v.videoHeight));
+            const w=Math.max(1,Math.round(v.videoWidth*k)),h=Math.max(1,Math.round(v.videoHeight*k));
+            if(!camCv)camCv=document.createElement('canvas');
+            if(camCv.width!==w||camCv.height!==h){camCv.width=w;camCv.height=h;}
+            const cx=camCv.getContext('2d',{willReadFrequently:true});
+            cx.drawImage(v,0,0,w,h);
+            const id=cx.getImageData(0,0,w,h);camTick++;
+            const r=window.jsQR(id.data,w,h,{inversionAttempts:camTick%3===0?'attemptBoth':'dontInvert'});
+            let txt=r&&r.data;
+            if(r&&!txt&&r.binaryData&&r.binaryData.length){try{txt=new TextDecoder('utf-8').decode(Uint8Array.from(r.binaryData));}catch(_){}}
+            if(txt){camFound(txt);return;}
+          }catch(e){console.warn('QR camera:',e);}
+        }
+        camLoop();
+      });
+    }
+    function camFound(txt){
+      try{if(navigator.vibrate)navigator.vibrate(60);}catch(_){}
+      camStop();clearResults();addResult(txt,t('Camera'));
+      setStatus(fmt('Tìm thấy {n} mã QR.',{n:1}));
+    }
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')camStop();});
+    window.addEventListener('pagehide',()=>camStop());
 
     /* ---------- Tab In nhãn ---------- */
     function parseList(text){
@@ -16342,10 +16457,10 @@ async function photoOpenFile(file,opt={}){
     },true);
     /* Nút Back của Android: đóng bảng QR trước */
     const prevBack=window.easyHandleBack,prevNeed=window.easyBackInterceptNeeded;
-    window.easyHandleBack=function(){if(isOpen()){close();return true;}return prevBack?prevBack.apply(this,arguments):false;};
-    window.easyBackInterceptNeeded=function(){if(isOpen())return true;return prevNeed?prevNeed.apply(this,arguments):false;};
+    window.easyHandleBack=function(){if(camIsOpen()){camStop();return true;}if(isOpen()){close();return true;}return prevBack?prevBack.apply(this,arguments):false;};
+    window.easyBackInterceptNeeded=function(){if(isOpen()||camIsOpen())return true;return prevNeed?prevNeed.apply(this,arguments):false;};
     window.easyQrOpen=open;
-    window.easyQr={open,close,isOpen,makeMatrix,matrixCanvas,matrixSvg,renderStyled,renderSvg,ST_DEF,ST_PRESETS,verifyStyled,setLogo:c=>{logoImg=c;},scanCanvas,scanPdfPage,readImage,buildLabelPdf,parseList,layout,labelItems,cfg,_state:()=>({curM,curTab,busy})};
+    window.easyQr={open,close,isOpen,makeMatrix,matrixCanvas,matrixSvg,renderStyled,renderSvg,ST_DEF,ST_PRESETS,verifyStyled,setLogo:c=>{logoImg=c;},camStart,camStop,camIsOpen,scanCanvas,scanPdfPage,readImage,buildLabelPdf,parseList,layout,labelItems,cfg,_state:()=>({curM,curTab,busy})};
     try{if(window.easyOxFid)easyOxFid.i18n();if(window.easyOwFid)easyOwFid.i18n();}catch(_){}   /* v2.94: bản dịch của Excel giống bản gốc (I18N bị nạp lại ở module giữa) */
     try{i18nApply();}catch(_){}
   })();
