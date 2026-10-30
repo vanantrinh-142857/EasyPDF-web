@@ -7,7 +7,7 @@
 <meta content="#e63329" name="theme-color"/>
 <meta content="yes" name="mobile-web-app-capable"/>
 <meta content="yes" name="apple-mobile-web-app-capable"/>
-<title>Easy PDF 2.95</title>
+<title>Easy PDF 2.96</title>
 <style>
   :root{
     --page-bg:#d5e2ef;
@@ -4437,7 +4437,7 @@ if(!window.__easyRuntimeErrorCollectorReady){
   function syncDirtyUI(){
     try{
       const nm=baseName?baseName+'.pdf':'Easy PDF';
-      document.title=(sessionDirty?'● ':'')+'Easy PDF 2.95 — '+nm;
+      document.title=(sessionDirty?'● ':'')+'Easy PDF 2.96 — '+nm;
       const b=$('btnSaveEdited');if(b)b.title=sessionDirty?T('Có thay đổi chưa lưu'):T('Đã lưu');
     }catch(_){}
   }
@@ -5588,7 +5588,7 @@ if(!window.__easyRuntimeErrorCollectorReady){
     if(!window.showOpenFilePicker){easyClickHtmlFileInput();return;}
     try{
       const[hnd]=await showOpenFilePicker({types:[
-        {description:'Tài liệu (PDF, Word, Excel, PowerPoint)',accept:{
+        {description:'Tài liệu, ảnh và mô hình IFC (PDF, Word, Excel, PowerPoint, IFC)',accept:{
           'application/pdf':['.pdf'],
           'application/msword':['.doc'],
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document':['.docx'],
@@ -5602,7 +5602,9 @@ if(!window.__easyRuntimeErrorCollectorReady){
           'image/png':['.png'],
           'image/webp':['.webp'],
           'image/gif':['.gif'],
-          'image/bmp':['.bmp']
+          'image/bmp':['.bmp'],
+          'application/x-step':['.ifc'],
+          'application/octet-stream':['.ifczip','.ifclite']
         }}]});
       const f=await hnd.getFile();
       await openAny(f,{candidateHandle:isPdf(f)?hnd:null});
@@ -15152,7 +15154,7 @@ async function photoOpenFile(file,opt={}){
     const i18n=window.easyI18nAudit?window.easyI18nAudit():null;
     const entry=['easyOpenIncoming','easyHandleBack','easyBackInterceptNeeded','easyNotifyBackState','photoOpenEditor'];
     return {
-      version:'2.95',
+      version:'2.96',
       duplicateIds:dup,
       storageGuard:!!window.EasyPDFSafeStorage,
       entryPoints:Object.fromEntries(entry.map(k=>[k,typeof window[k]==='function'])),
