@@ -1,0 +1,24 @@
+MỞ FILE IFC TẢI TỪ ZALO TRÊN IPHONE BẰNG EASYPDF WEB
+
+A. LƯU FILE IFC TỪ ZALO VÀO ỨNG DỤNG "TỆP" (FILES)
+ 1. Mở cuộc trò chuyện Zalo có file .ifc.
+ 2. Chạm vào file để xem trước/tải về. Khi xong, chạm biểu tượng chia sẻ (ô vuông có mũi tên đi lên) hoặc nhấn giữ vào file → "Chia sẻ".
+ 3. Trong bảng chia sẻ của iPhone, chọn "Lưu vào Tệp" (Save to Files).
+ 4. Chọn nơi lưu: "Trên iPhone của tôi" hoặc "iCloud Drive" → thư mục "Downloads" (hoặc tạo thư mục "IFC") → bấm "Lưu". Nhớ tên thư mục.
+    (Tên nút trong Zalo có thể khác chút tuỳ phiên bản.)
+
+B. MỞ TRÊN EASYPDF WEB
+ 1. Dùng SAFARI (không dùng trình duyệt nhúng trong Zalo): nếu bạn nhận link EasyPDF qua Zalo, chạm "..." → "Mở bằng Safari".
+ 2. Vào địa chỉ EasyPDF web của bạn. Lần đầu cần có mạng để tải trang.
+ 3. Khuyên dùng: nút Chia sẻ của Safari → "Thêm vào Màn hình chính" để chạy toàn màn hình.
+ 4. Chạm thẻ "Mô hình IFC 3D" (hoặc "Mở file").
+ 5. iPhone hiện bảng: "Thư viện ảnh / Chụp ảnh hoặc quay video / Chọn tệp" → chọn "Chọn tệp" (Choose Files).
+ 6. Ở dưới màn hình chạm tab "Duyệt" (Browse) → vào "Trên iPhone của tôi" hoặc "iCloud Drive" → thư mục đã lưu ở phần A → chạm file .ifc.
+ 7. Chờ mô hình nạp (file lớn mất lâu). Đừng khoá màn hình hoặc chuyển ứng dụng khác khi đang nạp.
+ 8. Xem 3D: một ngón = xoay; hai ngón chụm/giãn = phóng to/thu nhỏ; hai ngón kéo = di chuyển. Dùng thanh công cụ để đo, lọc cấu kiện.
+
+C. LƯU Ý
+ - File không chọn được (bị mờ) → cần dùng bản web 2.95 trở lên (đã bỏ bộ lọc loại tệp cho iPhone). Tải lại trang; nếu vẫn cũ: Cài đặt → Safari → Xoá lịch sử và dữ liệu trang web.
+ - File IFC rất lớn có thể làm Safari tự tải lại trang. Thử đóng các tab/ứng dụng khác, hoặc dùng iPhone nhiều RAM hơn.
+ - Mục "Gần đây" trên iPhone chỉ nhớ tên và vị trí xem; muốn mở lại phải chọn lại file ở bước 5–6 (iOS không cho trang web nhớ đường dẫn tệp).
+ - File được xử lý ngay trên máy, không tải lên máy chủ.
